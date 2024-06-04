@@ -69,7 +69,6 @@ class AutonomousRendezvousTransformer(DecisionTransformerPreTrainedModel):
 
         self.embed_timestep = nn.Embedding(config.max_ep_len, config.hidden_size)
         self.embed_return = torch.nn.Linear(1, config.hidden_size)
-        self.embed_constraint = torch.nn.Linear(1, config.hidden_size)
         self.embed_state = torch.nn.Linear(config.state_dim, config.hidden_size)
         self.embed_action = torch.nn.Linear(config.act_dim, config.hidden_size)
 
@@ -80,6 +79,7 @@ class AutonomousRendezvousTransformer(DecisionTransformerPreTrainedModel):
         self.predict_action = nn.Sequential(
             *([nn.Linear(config.hidden_size, config.act_dim)] + ([nn.Tanh()] if config.action_tanh else []))
         )
+        self.predict_return = torch.nn.Linear(config.hidden_size, 1)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -154,29 +154,27 @@ class AutonomousRendezvousTransformer(DecisionTransformerPreTrainedModel):
         state_embeddings = self.embed_state(states)
         action_embeddings = self.embed_action(actions)
         returns_embeddings = self.embed_return(returns_to_go)
-        constraints_embeddings = self.embed_constraint(constraints_to_go)
         time_embeddings = self.embed_timestep(timesteps)
 
         # time embeddings are treated similar to positional embeddings
         state_embeddings = state_embeddings + time_embeddings
         action_embeddings = action_embeddings + time_embeddings
         returns_embeddings = returns_embeddings + time_embeddings
-        constraints_embeddings = constraints_embeddings + time_embeddings
 
         # this makes the sequence look like (R_1, C_1 s_1, a_1, R_2, C_2, s_2, a_2, ...)
         # which works nice in an autoregressive sense since states predict actions
         stacked_inputs = (
-            torch.stack((returns_embeddings, constraints_embeddings, state_embeddings, action_embeddings), dim=1)
+            torch.stack((returns_embeddings, state_embeddings, action_embeddings), dim=1)
             .permute(0, 2, 1, 3)
-            .reshape(batch_size, 4 * seq_length, self.hidden_size)
+            .reshape(batch_size, 3 * seq_length, self.hidden_size)
         )
         stacked_inputs = self.embed_ln(stacked_inputs)
 
         # to make the attention mask fit the stacked inputs, have to stack it as well
         stacked_attention_mask = (
-            torch.stack((attention_mask, attention_mask, attention_mask, attention_mask), dim=1)
+            torch.stack((attention_mask, attention_mask, attention_mask), dim=1)
             .permute(0, 2, 1)
-            .reshape(batch_size, 4 * seq_length)
+            .reshape(batch_size, 3 * seq_length)
         )
         device = stacked_inputs.device
         # we feed in the input embeddings (not word indices as in NLP) to the model
@@ -192,11 +190,11 @@ class AutonomousRendezvousTransformer(DecisionTransformerPreTrainedModel):
 
         # reshape x so that the second dimension corresponds to the original
         # returns (0), states (1), or actions (2); i.e. x[:,1,t] is the token for s_t
-        x = x.reshape(batch_size, seq_length, 4, self.hidden_size).permute(0, 2, 1, 3)
+        x = x.reshape(batch_size, seq_length, 3, self.hidden_size).permute(0, 2, 1, 3)
 
         # get predictions
-        state_preds = self.predict_state(x[:, 3])  # predict next state given state and action
-        action_preds = self.predict_action(x[:, 2])  # predict next action given state
+        state_preds = self.predict_state(x[:, 2])  # predict next state given state and action
+        action_preds = self.predict_action(x[:, 1])  # predict next action given state
         if not return_dict:
             return (state_preds, action_preds)
 
