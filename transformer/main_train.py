@@ -112,7 +112,7 @@ class RpodDataset(Dataset):
 
 # Initialize dataset objects
 train_dataset = RpodDataset('train')
-test_dataset = RpodDataset('val')
+test_dataset = RpodDataset('test')
 states_i, actions_i, rtgs_i, timesteps_i, attention_mask_i, ix = train_dataset[0]
 
 if verbose:
