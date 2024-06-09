@@ -93,7 +93,7 @@ class RpodDataset(Dataset):
         self.max_len = self.data['states'].shape[1]
 
     def __len__(self):
-        return len(self.data)
+        return len(self.data['states'])
 
     def __getitem__(self, idx):
         ix = torch.randint(self.n_data, (1,))
@@ -125,17 +125,13 @@ if verbose:
 # create a DataLoader object for both train and test
 train_loader = DataLoader(
     train_dataset,
-    sampler=torch.utils.data.RandomSampler(
-        train_dataset, replacement=True, num_samples=int(1e10)),
-    shuffle=False,
+    shuffle=True,
     pin_memory=True,
     batch_size=4,
     num_workers=0,
 )
 eval_loader = DataLoader(
     test_dataset,
-    sampler=torch.utils.data.RandomSampler(
-        test_dataset, replacement=True, num_samples=int(1e10)),
     shuffle=False,
     pin_memory=True,
     batch_size=4,
@@ -171,7 +167,7 @@ model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
 )
 
 # for now this is unused. Potentially we can implement learning rate schedules
-num_train_epochs = 1
+num_train_epochs = 7
 num_update_steps_per_epoch = len(train_dataloader)
 num_training_steps = 10000000000
 
