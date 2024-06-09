@@ -179,16 +179,13 @@ lr_scheduler = get_scheduler(
 )
 
 # Eval function to plot results during training
-eval_iters = 100
 @torch.no_grad()
 def evaluate():
     model.eval()
     losses = []
     losses_state = []
     losses_action = []
-    for step in range(eval_iters):
-        data_iter = iter(eval_dataloader)
-        states_i, actions_i, rtgs_i, timesteps_i, attention_mask_i, ix = next(data_iter)
+    for states_i, actions_i, rtgs_i, timesteps_i, attention_mask_i, ix in eval_dataloader:
         with torch.no_grad():
             state_preds, action_preds, return_preds = model(
                 states=states_i,
@@ -213,12 +210,13 @@ def evaluate():
 print('\n======================')
 print('Initializing training\n')
 # Training loop
-eval_steps = 500
+eval_steps = 50_000
 samples_per_step = accelerator.state.num_processes * train_loader.batch_size
 
 model.train()
 completed_steps = 0
 for epoch in range(num_train_epochs):
+    print(f'==== Epoch: {epoch + 1} ====')
     for step, batch in enumerate(train_dataloader, start=0):
         with accelerator.accumulate(model):
             states_i, actions_i, rtgs_i, timesteps_i, attention_mask_i, ix = batch
@@ -252,10 +250,10 @@ for epoch in range(num_train_epochs):
             lr_scheduler.step()
             optimizer.zero_grad()
             completed_steps += 1
-            if (step % (eval_steps)) == 0:
+            if (step % eval_steps) == 0 and step != 0:
                 eval_loss, loss_state, loss_action = evaluate()
                 accelerator.print({"loss/eval": eval_loss, "loss/state": loss_state, "loss/action": loss_action})
                 model.train()
                 accelerator.wait_for_everyone()
-            if (step % eval_steps*10) == 0:
+            if (step % eval_steps) == 0 and step != 0:
                accelerator.save_state(root_folder + '/transformer/saved_files/checkpoints/checkpoint_rtn_art_train')
