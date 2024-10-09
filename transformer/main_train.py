@@ -64,14 +64,14 @@ n_mdp = n_state+n_action+n_reward+n_constraint
 print('Completed\n')
 
 # Normalize data
-states_mean = torch_states.mean(dim=0)
-states_std = (torch_states.std(dim=0) + 1e-6)
+states_mean = torch_states.mean(dim=(0, 1))
+states_std = (torch_states.std(dim=(0, 1)) + 1e-6)
 
-actions_mean = torch_actions.mean(dim=0)
-actions_std = (torch_actions.std(dim=0) + 1e-6)
+actions_mean = torch_actions.mean(dim=(0, 1))
+actions_std = (torch_actions.std(dim=(0, 1)) + 1e-6)
 
-rtgs_mean = torch_rtgs.mean(dim=0)
-rtgs_std = (torch_rtgs.std(dim=0) + 1e-6)
+rtgs_mean = torch_rtgs.mean(dim=(0, 1))
+rtgs_std = (torch_rtgs.std(dim=(0, 1)) + 1e-6)
 
 states_norm = ((torch_states - states_mean) / (states_std + 1e-6))
 actions_norm = ((torch_actions - actions_mean) / (actions_std + 1e-6))
