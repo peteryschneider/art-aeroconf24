@@ -63,24 +63,29 @@ n_mdp = n_state+n_action+n_reward+n_constraint
 
 print('Completed\n')
 
-# Normalize data
-states_mean = torch_states.mean(dim=(0, 1))
-states_std = (torch_states.std(dim=(0, 1)) + 1e-6)
-
-actions_mean = torch_actions.mean(dim=(0, 1))
-actions_std = (torch_actions.std(dim=(0, 1)) + 1e-6)
-
-rtgs_mean = torch_rtgs.mean(dim=(0, 1))
-rtgs_std = (torch_rtgs.std(dim=(0, 1)) + 1e-6)
-
-states_norm = ((torch_states - states_mean) / (states_std + 1e-6))
-actions_norm = ((torch_actions - actions_mean) / (actions_std + 1e-6))
-rtgs_norm = ((torch_rtgs - rtgs_mean) / (rtgs_std + 1e-6))
-
 # Separate dataset in train and val data
 n = int(0.9*n_data)
-train_data = {'states':states_norm[:n, :], 'actions':actions_norm[:n, :], 'rtgs':rtgs_norm[:n, :]}
-val_data = {'states':states_norm[n:, :], 'actions':actions_norm[n:, :], 'rtgs':rtgs_norm[n:, :]}
+train_data = {'states': torch_states[:n, :], 'actions': torch_actions[:n, :], 'rtgs': torch_rtgs[:n, :]}
+val_data = {'states': torch_states[n:, :], 'actions': torch_actions[n:, :], 'rtgs': torch_rtgs[n:, :]}
+
+# Normalize data
+states_mean = train_data['states'].mean(dim=(0, 1))
+states_std = (train_data['states'].std(dim=(0, 1)) + 1e-6)
+
+actions_mean = train_data['actions'].mean(dim=(0, 1))
+actions_std = (train_data['actions'].std(dim=(0, 1)) + 1e-6)
+
+rtgs_mean = train_data['rtgs'].mean(dim=(0, 1))
+rtgs_std = (train_data['rtgs'].std(dim=(0, 1)) + 1e-6)
+
+train_data['states'] = ((train_data['states'] - states_mean) / (states_std + 1e-6))
+val_data['states'] = ((val_data['states'] - states_mean) / (states_std + 1e-6))
+
+train_data['actions'] = ((train_data['actions'] - actions_mean) / (actions_std + 1e-6))
+val_data['actions'] = ((val_data['actions'] - actions_mean) / (actions_std + 1e-6))
+
+train_data['rtgs'] = ((train_data['rtgs'] - rtgs_mean) / (rtgs_std + 1e-6))
+val_data['rtgs'] = ((val_data['rtgs'] - rtgs_mean) / (rtgs_std + 1e-6))
 
 # RPDO data class
 class RpodDataset(Dataset):
